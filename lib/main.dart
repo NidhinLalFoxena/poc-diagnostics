@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:developer';
 import 'dart:typed_data';
 import 'package:bluetooth_classic/bluetooth_classic.dart';
 import 'package:bluetooth_classic/models/device.dart';
@@ -17,9 +16,7 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
-  // Bluetooth plugin instance
   final _bluetoothClassicPlugin = BluetoothClassic();
-
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey = GlobalKey();
 
   // State variables
@@ -30,25 +27,35 @@ class _MainAppState extends State<MainApp> {
   bool isConnected = false; // Connection state flag
   String receivedData = ''; // Data received from OBD adapter
 
-  // Vehicle information map with default values
+  // Vehicle information
   Map<String, String> vehicleInfo = {
     'OBD Protocol': 'Unknown',
     'VIN': 'Unknown',
     'ECU Name': 'Unknown',
     'Adapter': 'Unknown',
-    'Battery Voltage': 'Unknown',
-    'Battery SOC': 'Unknown',
-    'Battery Temp': 'Unknown',
-    'Motor Temp': 'Unknown',
-    'Throttle Position': 'Unknown',
-    'Speed': 'Unknown',
-    'Odometer': 'Unknown',
+    'Battery Voltage': '0V',
+    'Battery SOC': '0%',
+    'Battery Temp': '0°C',
+    'Motor Temp': '0°C',
+    'Throttle Position': '0%',
+    'Speed': '0 km/h',
+    'Odometer': '0 km',
   };
 
-  // Stream controllers for Bluetooth events
+  // Real-time streaming
+  Timer? _pollingTimer;
+  final Map<String, String> _streamingPids = {
+    'speed': '010D', // Vehicle speed
+    'throttle': '0145', // Throttle position
+    'voltage': 'ATRV', // Battery voltage
+    'soc': '015B', // State of charge
+    'motorTemp': '2211', // Motor temperature
+  };
+
+  // Stream subscriptions
   StreamSubscription<Uint8List>? _dataSubscription; // For incoming data
   StreamSubscription<int>? _statusSubscription; // For connection status changes
-  StreamSubscription<Device>? _scanSubscription; // For device discovery
+  StreamSubscription<Device>? _scanSubscription; // For device discover
 
   final TextEditingController _commandController =
       TextEditingController(); // For OBD commands
@@ -58,7 +65,7 @@ class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
-    initBluetooth(); // Initialize Bluetooth when widget is created
+    initBluetooth();
   }
 
   // Initialize Bluetooth functionality
@@ -82,27 +89,29 @@ class _MainAppState extends State<MainApp> {
 
   // Parse received data for vehicle information
   void _parseVehicleInfo(String data) {
-    final lines = data.split('\r'); // Split by carriage return
-    final newInfo = <String, String>{}; // Temporary map for new info
+    final lines = data.split('\r');
+    final newInfo = <String, String>{};
 
     for (var line in lines) {
-      line = line.trim(); // Clean up the line
-      if (line.isEmpty) continue; // Skip empty lines
+      line = line.trim();
+      if (line.isEmpty) continue;
 
-      // Parse protocol information (ATDPN command response)
+      // --- Protocol Information ---
       if (line.contains('ATDPN')) {
         final protocolMatch = RegExp(r'ATDPN\r?\n?(.+)').firstMatch(line);
         if (protocolMatch != null) {
           newInfo['OBD Protocol'] = protocolMatch.group(1)!.trim();
         }
       }
-      // Parse VIN (0902 command response)
+      // --- Adapter Information ---
+      else if (line.startsWith('ELM327')) {
+        newInfo['Adapter'] = line;
+      }
+      // --- VIN (Vehicle Identification Number) ---
       else if (line.contains('49 02') || line.contains('4D 34')) {
-        // Try to parse the VIN from hex data
         try {
           final hexParts = line.split(' ').where((p) => p.length == 2).toList();
           if (hexParts.length >= 6) {
-            // Skip first 2 bytes (49 02 is the response header)
             final vinHex = hexParts.skip(2).take(17).join('');
             String vin = '';
             for (int i = 0; i < vinHex.length; i += 2) {
@@ -114,37 +123,21 @@ class _MainAppState extends State<MainApp> {
         } catch (e) {
           newInfo['VIN'] = 'Unable to decode';
         }
-        continue;
       }
-      // Parse battery voltage (ATRV command response)
-      else if (line.contains('V') && line.length < 10) {
-        newInfo['Battery Voltage'] = line;
+      // --- ECU Name ---
+      else if (line.length > 10 && !line.contains(' ') && !line.contains('>')) {
+        newInfo['ECU Name'] = line;
       }
-      // Parse battery state of charge (015B command response)
-      else if (line.contains('41 5B')) {
-        final socMatch = RegExp(r'41 5B ([0-9A-F]{2})').firstMatch(line);
-        if (socMatch != null) {
-          final soc = int.parse(socMatch.group(1)!, radix: 16);
-          newInfo['Battery SOC'] = '$soc%';
+      // --- Real-Time Data ---
+      // Speed (010D)
+      else if (line.contains('41 0D')) {
+        final speedMatch = RegExp(r'41 0D ([0-9A-F]{2})').firstMatch(line);
+        if (speedMatch != null) {
+          final speed = int.parse(speedMatch.group(1)!, radix: 16);
+          newInfo['Speed'] = '$speed km/h';
         }
       }
-      // Parse battery temperature (015C command response)
-      else if (line.contains('41 5C')) {
-        final tempMatch = RegExp(r'41 5C ([0-9A-F]{2})').firstMatch(line);
-        if (tempMatch != null) {
-          final temp = int.parse(tempMatch.group(1)!, radix: 16) - 40;
-          newInfo['Battery Temp'] = '$temp°C';
-        }
-      }
-      // Parse motor temperature (2211 command response)
-      else if (line.contains('62 11')) {
-        final tempMatch = RegExp(r'62 11 ([0-9A-F]{2})').firstMatch(line);
-        if (tempMatch != null) {
-          final temp = int.parse(tempMatch.group(1)!, radix: 16) - 40;
-          newInfo['Motor Temp'] = '$temp°C';
-        }
-      }
-      // Parse throttle position (0145 command response)
+      // Throttle Position (0145)
       else if (line.contains('41 45')) {
         final throttleMatch = RegExp(r'41 45 ([0-9A-F]{2})').firstMatch(line);
         if (throttleMatch != null) {
@@ -153,21 +146,40 @@ class _MainAppState extends State<MainApp> {
           newInfo['Throttle Position'] = '${throttle.toStringAsFixed(1)}%';
         }
       }
-      // Parse speed (010D command response)
-      else if (line.contains('41 0D')) {
-        final speedMatch = RegExp(r'41 0D ([0-9A-F]{2})').firstMatch(line);
-        if (speedMatch != null) {
-          final speed = int.parse(speedMatch.group(1)!, radix: 16);
-          newInfo['Speed'] = '$speed km/h';
+      // Battery Voltage (ATRV)
+      else if (line.contains('V') && line.length < 10) {
+        newInfo['Battery Voltage'] = line;
+      }
+      // Battery State of Charge (015B)
+      else if (line.contains('41 5B')) {
+        final socMatch = RegExp(r'41 5B ([0-9A-F]{2})').firstMatch(line);
+        if (socMatch != null) {
+          final soc = int.parse(socMatch.group(1)!, radix: 16);
+          newInfo['Battery SOC'] = '$soc%';
         }
       }
-      // Parse odometer (01A6 command response)
+      // Battery Temperature (015C)
+      else if (line.contains('41 5C')) {
+        final tempMatch = RegExp(r'41 5C ([0-9A-F]{2})').firstMatch(line);
+        if (tempMatch != null) {
+          final temp = int.parse(tempMatch.group(1)!, radix: 16) - 40;
+          newInfo['Battery Temp'] = '$temp°C';
+        }
+      }
+      // Motor Temperature (2211)
+      else if (line.contains('62 11')) {
+        final tempMatch = RegExp(r'62 11 ([0-9A-F]{2})').firstMatch(line);
+        if (tempMatch != null) {
+          final temp = int.parse(tempMatch.group(1)!, radix: 16) - 40;
+          newInfo['Motor Temp'] = '$temp°C';
+        }
+      }
+      // Odometer (01A6)
       else if (line.contains('41 A6')) {
         final odoMatch = RegExp(r'41 A6 ([0-9A-F ]+)').firstMatch(line);
         if (odoMatch != null) {
           final hexParts = odoMatch.group(1)!.split(' ');
           if (hexParts.length >= 3) {
-            // Combine multiple bytes to get odometer value
             final odo = (int.parse(hexParts[0], radix: 16) << 16) +
                 (int.parse(hexParts[1], radix: 16) << 8) +
                 int.parse(hexParts[2], radix: 16);
@@ -175,19 +187,33 @@ class _MainAppState extends State<MainApp> {
           }
         }
       }
-      // Parse ELM327 adapter version
-      else if (line.startsWith('ELM327')) {
-        newInfo['Adapter'] = line;
-      }
-      // Parse ECU name (long unformatted text)
-      else if (line.length > 10 && !line.contains(' ') && !line.contains('>')) {
-        newInfo['ECU Name'] = line;
-      }
     }
 
-    // Update vehicle info if new data was found
     if (newInfo.isNotEmpty) {
       setState(() => vehicleInfo.addAll(newInfo));
+    }
+  }
+
+  /// Starts or stops real-time streaming of vehicle data.
+  ///
+  /// When [enable] is true, this function starts a timer that sends a command
+  /// to the vehicle every 500 milliseconds. The command is chosen from the
+  /// list of streaming PIDs in [_streamingPids] by wrapping around the list
+  /// with each timer tick. When [enable] is false, the timer is stopped and
+  /// any pending timer is cancelled.
+  void _toggleRealTimeStreaming(bool enable) {
+    if (enable) {
+      _pollingTimer =
+          Timer.periodic(const Duration(milliseconds: 500), (timer) {
+        if (isConnected) {
+          final pidIndex = timer.tick % _streamingPids.length;
+          final pid = _streamingPids.values.elementAt(pidIndex);
+          sendCommand(pid);
+        }
+      });
+    } else {
+      _pollingTimer?.cancel();
+      _pollingTimer = null;
     }
   }
 
@@ -264,7 +290,7 @@ class _MainAppState extends State<MainApp> {
 
     // --- Manufacturer-Specific PIDs (CRITICAL for electric bikes) proprietary (manufacturer-specific) PIDs (Parameter IDs)  ---
     // These are the most important for detailed electric bike data.
-    // **YOU MUST RESEARCH THESE FOR YOUR SPECIFIC BIKE'S BRAND/MODEL.**
+    // **WE MUST RESEARCH THESE FOR YOUR SPECIFIC BIKE'S BRAND/MODEL.**
     // They typically fall into Mode 21, Mode 22, Mode 23, etc., or proprietary modes.
 
     // Example: Reading a proprietary PID for Motor Temperature (Mode 22, PID 11)
@@ -304,21 +330,19 @@ class _MainAppState extends State<MainApp> {
   Future<void> scanDevices() async {
     setState(() {
       isScanning = true;
-      devices = []; // Clear previous devices
+      devices = [];
     });
 
-    // Listen for discovered devices
     _scanSubscription =
         _bluetoothClassicPlugin.onDeviceDiscovered().listen((device) {
-      // Add device if not already in list
       if (!devices.any((d) => d.address == device.address)) {
         setState(() => devices.add(device));
       }
     });
 
-    await _bluetoothClassicPlugin.startScan(); // Start scanning
-    await Future.delayed(const Duration(seconds: 10)); // Scan for 10 seconds
-    await _bluetoothClassicPlugin.stopScan(); // Stop scanning
+    await _bluetoothClassicPlugin.startScan();
+    await Future.delayed(const Duration(seconds: 10));
+    await _bluetoothClassicPlugin.stopScan();
     setState(() => isScanning = false);
   }
 
@@ -330,18 +354,24 @@ class _MainAppState extends State<MainApp> {
       await _bluetoothClassicPlugin
           .connect(device.address, obdUuid)
           .timeout(const Duration(seconds: 15));
-      setState(() => connectedDevice = device);
 
       // Clear previous data
-      setState(() => receivedData = '');
+      setState(() {
+        connectedDevice = device;
+        receivedData = '';
+      });
 
       // Initialize OBD adapter
       await sendCommand('ATZ'); // Reset
       await Future.delayed(const Duration(seconds: 1));
       await sendCommand('ATE0'); // Echo off
       await Future.delayed(const Duration(milliseconds: 300));
+      await sendCommand('ATH0');
 
-      // Get vehicle information
+      // Start real-time streaming
+      _toggleRealTimeStreaming(true);
+
+      // Get vehicle info
       await _getVehicleInfo();
     } on TimeoutException {
       _showSnackBar('Connection timed out');
@@ -352,12 +382,19 @@ class _MainAppState extends State<MainApp> {
 
   // Disconnect from current device
   Future<void> disconnectDevice() async {
+    _toggleRealTimeStreaming(false);
     await _bluetoothClassicPlugin.disconnect();
     setState(() {
       connectedDevice = null;
       isConnected = false;
       receivedData = '';
-      vehicleInfo.clear();
+      vehicleInfo.updateAll((key, value) => key.endsWith('Temp') ||
+              key.endsWith('SOC') ||
+              key.endsWith('Voltage') ||
+              key.endsWith('Position') ||
+              key == 'Speed'
+          ? '0'
+          : 'Unknown');
     });
   }
 
@@ -376,6 +413,7 @@ class _MainAppState extends State<MainApp> {
         case 0: // Disconnected
           isConnected = false;
           isConnecting = false;
+          _toggleRealTimeStreaming(false);
           break;
         case 1: // Connecting
           isConnecting = true;
@@ -387,7 +425,6 @@ class _MainAppState extends State<MainApp> {
       }
     });
 
-    // Show status message to user
     final messages = {
       0: 'Device disconnected',
       1: 'Connecting to device...',
@@ -396,7 +433,6 @@ class _MainAppState extends State<MainApp> {
     _showSnackBar(messages[statusCode]!);
   }
 
-  // Helper method to show snackbar messages
   void _showSnackBar(String message) {
     if (!mounted) return;
     _scaffoldMessengerKey.currentState?.showSnackBar(
@@ -406,10 +442,10 @@ class _MainAppState extends State<MainApp> {
 
   @override
   void dispose() {
-    // Clean up resources when widget is disposed
     _dataSubscription?.cancel();
     _statusSubscription?.cancel();
     _scanSubscription?.cancel();
+    _pollingTimer?.cancel();
     _bluetoothClassicPlugin.disconnect();
     _commandController.dispose();
     super.dispose();
@@ -417,28 +453,23 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
-    log('receivedData : ${receivedData.toString()}');
     return MaterialApp(
       scaffoldMessengerKey: _scaffoldMessengerKey,
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('OBD2 Vehicle Info'),
+          title: const Text('OBD2 Bike Monitor'),
           actions: [
-            if (isConnected)
+            if (isConnected) ...[
               IconButton(
                 icon:
                     const Icon(Icons.bluetooth_connected, color: Colors.green),
                 onPressed: disconnectDevice,
-                tooltip: 'Disconnect',
-              )
-            else if (isConnecting)
+              ),
               const Padding(
                 padding: EdgeInsets.all(12.0),
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(Colors.white),
-                ),
+                child: Icon(Icons.circle, color: Colors.green, size: 12),
               ),
+            ],
           ],
         ),
         body: Padding(
@@ -446,7 +477,7 @@ class _MainAppState extends State<MainApp> {
           child: Column(
             children: [
               if (connectedDevice != null) ...[
-                // Connected device info tile
+                _buildRealtimeDisplay(),
                 ListTile(
                   leading: const Icon(Icons.bluetooth),
                   title:
@@ -455,78 +486,38 @@ class _MainAppState extends State<MainApp> {
                   trailing: IconButton(
                     icon: const Icon(Icons.refresh),
                     onPressed: _getVehicleInfo,
-                    tooltip: 'Refresh data',
                   ),
                 ),
                 const Divider(),
-                // Vehicle information card
-                Card(
-                  elevation: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 180),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Text('Vehicle Information',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                )),
-                            const SizedBox(height: 8),
-                            // System Information section
-                            _buildInfoSection('System Information', {
-                              'OBD Protocol': vehicleInfo['OBD Protocol']!,
-                              'ECU Name': vehicleInfo['ECU Name']!,
-                              'Adapter': vehicleInfo['Adapter']!,
-                              'VIN': vehicleInfo['VIN']!,
-                            }),
-                            const Divider(height: 20),
-                            // Battery Information section
-                            _buildInfoSection('Battery', {
-                              'Voltage': vehicleInfo['Battery Voltage']!,
-                              'State of Charge': vehicleInfo['Battery SOC']!,
-                              'Temperature': vehicleInfo['Battery Temp']!,
-                            }),
-                            const Divider(height: 20),
-                            // Performance Information section
-                            _buildInfoSection('Performance', {
-                              'Motor Temp': vehicleInfo['Motor Temp']!,
-                              'Throttle Position':
-                                  vehicleInfo['Throttle Position']!,
-                              'Speed': vehicleInfo['Speed']!,
-                              'Odometer': vehicleInfo['Odometer']!,
-                            }),
-                          ],
-                        ),
-                      ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: [
+                        _buildInfoSection('System Information', {
+                          'OBD Protocol': vehicleInfo['OBD Protocol']!,
+                          'ECU Name': vehicleInfo['ECU Name']!,
+                          'Adapter': vehicleInfo['Adapter']!,
+                          'VIN': vehicleInfo['VIN']!,
+                        }),
+                        const Divider(height: 20),
+                        _buildInfoSection('Battery', {
+                          'Voltage': vehicleInfo['Battery Voltage']!,
+                          'State of Charge': vehicleInfo['Battery SOC']!,
+                          'Temperature': vehicleInfo['Battery Temp']!,
+                        }),
+                        const Divider(height: 20),
+                        _buildInfoSection('Performance', {
+                          'Motor Temp': vehicleInfo['Motor Temp']!,
+                          'Throttle Position':
+                              vehicleInfo['Throttle Position']!,
+                          'Speed': vehicleInfo['Speed']!,
+                          'Odometer': vehicleInfo['Odometer']!,
+                        }),
+                      ],
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-              ],
-              // Device list
-              Expanded(
-                child: ListView.builder(
-                  itemCount: devices.length,
-                  itemBuilder: (context, index) {
-                    final device = devices[index];
-                    return ListTile(
-                      leading: const Icon(Icons.devices),
-                      title: Text(device.name ?? 'Unknown'),
-                      subtitle: Text(device.address),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.bluetooth),
-                        onPressed: () => connectToDevice(device),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              // OBD Terminal section (shown when connected)
-              if (isConnected) ...[
                 const Divider(),
                 const Text('OBD Terminal',
                     style: TextStyle(fontWeight: FontWeight.bold)),
@@ -545,7 +536,6 @@ class _MainAppState extends State<MainApp> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                // Command input row
                 Row(
                   children: [
                     Expanded(
@@ -564,11 +554,28 @@ class _MainAppState extends State<MainApp> {
                     ),
                   ],
                 ),
+              ] else ...[
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: devices.length,
+                    itemBuilder: (context, index) {
+                      final device = devices[index];
+                      return ListTile(
+                        leading: const Icon(Icons.devices),
+                        title: Text(device.name ?? 'Unknown'),
+                        subtitle: Text(device.address),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.bluetooth),
+                          onPressed: () => connectToDevice(device),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
             ],
           ),
         ),
-        // Scan button (only shown when not connected)
         floatingActionButton: !isConnected
             ? FloatingActionButton(
                 onPressed: isScanning ? null : scanDevices,
@@ -583,11 +590,46 @@ class _MainAppState extends State<MainApp> {
     );
   }
 
-  String getrecevedData(String receivedDatas) {
-    return receivedDatas;
+  Widget _buildRealtimeDisplay() {
+    return Card(
+      margin: const EdgeInsets.all(8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            spacing: 20,
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildMetricTile('Speed', vehicleInfo['Speed']!, Icons.speed),
+              _buildMetricTile(
+                  'Throttle', vehicleInfo['Throttle Position']!, Icons.speed),
+              _buildMetricTile(
+                  'Battery', vehicleInfo['Battery SOC']!, Icons.battery_full),
+              _buildMetricTile(
+                  'Voltage', vehicleInfo['Battery Voltage']!, Icons.flash_on),
+              _buildMetricTile(
+                  'Motor', vehicleInfo['Motor Temp']!, Icons.thermostat),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  // Helper widget to build an information section
+  Widget _buildMetricTile(String title, String value, IconData icon) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 24),
+        const SizedBox(height: 4),
+        Text(title, style: const TextStyle(fontSize: 12)),
+        Text(value,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
   Widget _buildInfoSection(String title, Map<String, String> items) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -600,7 +642,6 @@ class _MainAppState extends State<MainApp> {
     );
   }
 
-  // Helper widget to build an information row
   Widget _buildInfoRow(String title, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
