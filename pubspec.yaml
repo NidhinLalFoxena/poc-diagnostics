@@ -1,6 +1,6 @@
 name: diagnostics_test
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 version: 0.1.0
 
 environment:
@@ -10,6 +10,9 @@ dependencies:
   flutter:
     sdk: flutter
   bluetooth_classic: ^0.0.3
+  flutter_screenutil: ^5.9.3
+  flutter_svg: ^2.1.0
+  modal_bottom_sheet: ^3.0.0
 
 dev_dependencies:
   flutter_test:
@@ -18,3 +21,33 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/
+
+  fonts:
+    - family: Brutal_Type
+      fonts:
+        - asset: assets/fonts/Brutal_Type/bt_black.otf
+          weight: 900
+        - asset: assets/fonts/Brutal_Type/bt_extraBold.otf
+          weight: 800
+        - asset: assets/fonts/Brutal_Type/bt_bold.otf
+          weight: 700
+        - asset: assets/fonts/Brutal_Type/bt_medium.otf
+          weight: 500
+        - asset: assets/fonts/Brutal_Type/bt_regular.otf
+          weight: 400
+        - asset: assets/fonts/Brutal_Type/bt_light.otf
+          weight: 300
+        - asset: assets/fonts/Brutal_Type/bt_extraLight.otf
+          weight: 200
+        - asset: assets/fonts/Brutal_Type/bt_thin.otf
+          weight: 100
+
+    - family: Disket_Mono
+      fonts:
+        - asset: assets/fonts/disket-mono/Disket-Mono-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/disket-mono/Disket-Mono-Regular.ttf
+          weight: 400

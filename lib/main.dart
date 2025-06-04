@@ -3,10 +3,33 @@ import 'dart:developer';
 import 'dart:typed_data';
 import 'package:bluetooth_classic/bluetooth_classic.dart';
 import 'package:bluetooth_classic/models/device.dart';
+import 'package:diagnostics_test/ui.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() {
-  runApp(const MainApp());
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ScreenUtilInit(
+      designSize: const Size(375, 812),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      child: MaterialApp(
+        theme: ThemeData.dark(
+          useMaterial3: true,
+        ).copyWith(
+          scaffoldBackgroundColor: const Color(0xFF030303),
+        ),
+        home: const ConnectScreen(),
+      ),
+    );
+  }
 }
 
 class MainApp extends StatefulWidget {
@@ -69,6 +92,7 @@ class _MainAppState extends State<MainApp> {
     // Listen for incoming data from OBD adapter
     _dataSubscription =
         _bluetoothClassicPlugin.onDeviceDataReceived().listen((data) {
+      print(' Received data: ${data}');
       final newData = String.fromCharCodes(data); // Convert bytes to string
       setState(() => receivedData += newData); // Append to received data
       _parseVehicleInfo(newData); // Parse for vehicle information
