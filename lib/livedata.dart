@@ -160,7 +160,9 @@ class LiveDataScreen extends StatelessWidget {
       actions: [
         Padding(
           padding: CommonPaddingWrapper.getPadding(right: TSizes.md),
-          child: SvgPicture.asset('assets/autorenew.svg'),
+          child: InkWell(
+              onTap: _refreshData,
+              child: SvgPicture.asset('assets/autorenew.svg')),
         ),
       ],
     );

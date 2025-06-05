@@ -1,33 +1,8 @@
 <svg width="44" height="45" viewBox="0 0 44 45" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="44" height="45" fill="#F5F5F5"/>
-<g id="Diagnostic App">
-<path d="M-2817 -817C-2817 -818.104 -2816.1 -819 -2815 -819H3184C3185.1 -819 3186 -818.105 3186 -817V5183C3186 5184.1 3185.1 5185 3184 5185H-2815C-2816.1 5185 -2817 5184.1 -2817 5183V-817Z" fill="#444444"/>
-<path d="M-2815 -819V-818H3184V-819V-820H-2815V-819ZM3186 -817H3185V5183H3186H3187V-817H3186ZM3184 5185V5184H-2815V5185V5186H3184V5185ZM-2817 5183H-2816V-817H-2817H-2818V5183H-2817ZM-2815 5185V5184C-2815.55 5184 -2816 5183.55 -2816 5183H-2817H-2818C-2818 5184.66 -2816.66 5186 -2815 5186V5185ZM3186 5183H3185C3185 5183.55 3184.55 5184 3184 5184V5185V5186C3185.66 5186 3187 5184.66 3187 5183H3186ZM3184 -819V-818C3184.55 -818 3185 -817.552 3185 -817H3186H3187C3187 -818.657 3185.66 -820 3184 -820V-819ZM-2815 -819V-820C-2816.66 -820 -2818 -818.657 -2818 -817H-2817H-2816C-2816 -817.552 -2815.55 -818 -2815 -818V-819Z" fill="white" fill-opacity="0.1"/>
-<g id="Splash Screen">
-<g clip-path="url(#clip0_0_1)">
-<rect x="-36" y="-458" width="360" height="640" rx="4" fill="#030303"/>
-<g id="Frame 1597882457">
-<g id="Frame 1597882456">
-<foreignObject x="-34.4" y="-33.7333" width="356.8" height="155.133"><div xmlns="http://www.w3.org/1999/xhtml" style="backdrop-filter:blur(9.2px);clip-path:url(#bgblur_1_0_1_clip_path);height:100%;width:100%"></div></foreignObject><rect id="Rectangle 12917" data-figma-bg-blur-radius="18.4" x="-16" y="-15.3333" width="320" height="118.333" fill="#171717" fill-opacity="0.57"/>
-<g id="Group 627293">
-<g id="bar_chart">
-<mask id="mask0_0_1" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="44" height="45">
-<rect id="Bounding box" y="0.666748" width="44" height="44" fill="#D9D9D9"/>
+<mask id="mask0_184_77" style="mask-type:alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="44" height="45">
+<rect y="0.666748" width="44" height="44" fill="#D9D9D9"/>
 </mask>
-<g mask="url(#mask0_0_1)">
-<path id="bar_chart_2" d="M29.3333 36.4167V25.5932H35.75V36.4167H29.3333ZM18.7917 36.4167V8.91675H25.2083V36.4167H18.7917ZM8.25 36.4167V17.9074H14.6667V36.4167H8.25Z" fill="#727272"/>
+<g mask="url(#mask0_184_77)">
+<path d="M29.3333 36.4167V25.5932H35.75V36.4167H29.3333ZM18.7917 36.4167V8.91675H25.2083V36.4167H18.7917ZM8.25 36.4167V17.9074H14.6667V36.4167H8.25Z" fill="#727272"/>
 </g>
-</g>
-</g>
-</g>
-</g>
-</g>
-</g>
-</g>
-<defs>
-<clipPath id="bgblur_1_0_1_clip_path" transform="translate(34.4 33.7333)"><rect x="-16" y="-15.3333" width="320" height="118.333"/>
-</clipPath><clipPath id="clip0_0_1">
-<rect x="-36" y="-458" width="360" height="640" rx="4" fill="white"/>
-</clipPath>
-</defs>
 </svg>

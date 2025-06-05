@@ -67,7 +67,6 @@ class _ConnectScreenState extends State<ConnectScreen>
   void initState() {
     super.initState();
     _lottieController = AnimationController(vsync: this);
-    // Initially pause the animation
     _lottieController.stop();
   }
 
