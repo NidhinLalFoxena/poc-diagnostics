@@ -13,7 +13,7 @@ import 'package:diagnostics_test/widgets/common_padding_wrapper.dart';
 class ProfileScreenConstants {
   static const double blurSigmaX = 9.2;
   static const double blurSigmaY = 9.2;
-  static const double profileImageSize = 70.0;
+  static const double profileImageSize = 55.0;
   static const double connectionButtonHeight = 50.0;
   static const double connectionIndicatorSize = 15.0;
   static const double gridChildAspectRatio = 1.3;
@@ -34,7 +34,7 @@ extension ProfileTextStyles on TextTheme {
   TextStyle get profileVehicleModel => const TextStyle(
         color: Color(0xFF828282),
         fontFamily: 'Brutal_Type',
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: FontWeight.w400,
         height: 24 / 13,
         letterSpacing: -0.1,
@@ -43,7 +43,7 @@ extension ProfileTextStyles on TextTheme {
   TextStyle get profileLabel => const TextStyle(
         color: Color(0xFF666666),
         fontFamily: 'Brutal_Type',
-        fontSize: 12,
+        fontSize: 14,
         fontWeight: FontWeight.w400,
         height: 21 / 12,
       );
@@ -51,7 +51,7 @@ extension ProfileTextStyles on TextTheme {
   TextStyle get profileValue => const TextStyle(
         color: Color(0xFFA4A4A4),
         fontFamily: 'Brutal_Type',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: FontWeight.w400,
         height: 24 / 14,
       );
@@ -59,7 +59,7 @@ extension ProfileTextStyles on TextTheme {
   TextStyle get menuItemTitle => const TextStyle(
         color: Colors.white,
         fontFamily: 'Brutal_Type',
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: FontWeight.w500,
         height: 18 / 14,
         letterSpacing: 0.07,
@@ -68,8 +68,8 @@ extension ProfileTextStyles on TextTheme {
   TextStyle get connectionStatus => const TextStyle(
         color: Colors.white,
         fontFamily: 'Brutal_Type',
-        fontSize: 14,
-        fontWeight: FontWeight.w400,
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
         height: 18 / 14,
         letterSpacing: 0.07,
       );

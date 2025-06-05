@@ -16,7 +16,7 @@ class UpdateModalSheet extends StatefulWidget {
 }
 
 class _UpdateModalSheetState extends State<UpdateModalSheet> {
-  static const _defaultComment = 'Select Comment';
+  static const _defaultComment = 'Select Command';
   String _selectedComment = _defaultComment;
   bool get _isCommentSelected => _selectedComment != _defaultComment;
 
@@ -53,13 +53,13 @@ class _UpdateModalSheetState extends State<UpdateModalSheet> {
       padding: TSizes.md,
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(
+          InkWell(
+            onTap: () => Navigator.pop(context),
+            child: Icon(
               Icons.arrow_back_ios_new_rounded,
               color: Color(0xFF7D7D7D),
               size: 20,
             ),
-            onPressed: () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: TSizes.m),
           const Text(
@@ -103,7 +103,7 @@ class _UpdateModalSheetState extends State<UpdateModalSheet> {
             bottom: TSizes.l1,
           ),
           decoration: BoxDecoration(
-            color: FirmwareConstants.containerColor,
+            color: Color(0xFF24262B),
             borderRadius: BorderRadius.circular(TSizes.xs),
           ),
           child: Text(
@@ -120,7 +120,7 @@ class _UpdateModalSheetState extends State<UpdateModalSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'COMMENTS',
+          'COMMAND',
           style: _labelTextStyle,
         ),
         const SizedBox(height: TSizes.m1),
@@ -133,7 +133,7 @@ class _UpdateModalSheetState extends State<UpdateModalSheet> {
           ),
           width: double.infinity,
           decoration: BoxDecoration(
-            color: FirmwareConstants.containerColor,
+            color: Color(0xFF24262B),
             borderRadius: BorderRadius.circular(TSizes.xs),
           ),
           child: DropdownButtonHideUnderline(

@@ -36,7 +36,7 @@ class LiveDataConstants {
   static const subtitleTextStyle = TextStyle(
     color: subtitleColor,
     fontFamily: 'Disket_Mono',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: FontWeight.w500,
     height: 1.0,
   );
@@ -158,10 +158,9 @@ class LiveDataScreen extends StatelessWidget {
         style: LiveDataConstants.appBarTextStyle,
       ),
       actions: [
-        IconButton(
-          icon: const Icon(Icons.loop),
-          color: LiveDataConstants.iconColor,
-          onPressed: _refreshData,
+        Padding(
+          padding: CommonPaddingWrapper.getPadding(right: TSizes.md),
+          child: SvgPicture.asset('assets/autorenew.svg'),
         ),
       ],
     );
@@ -176,7 +175,7 @@ class LiveDataScreen extends StatelessWidget {
       separatorBuilder: (context, index) => const Divider(
         height: 1,
         thickness: 1,
-        color: LiveDataConstants.borderColor,
+        color: Color(0xFF1F1F1F),
       ),
     );
   }
@@ -201,10 +200,10 @@ class LiveDataTile extends StatelessWidget {
       subtitle: _buildSubtitle(),
       trailing: _buildTrailing(),
       contentPadding: CommonPaddingWrapper.getPadding(
-        left: TSizes.m,
-        right: TSizes.m,
-        top: TSizes.m1,
-        bottom: TSizes.m1,
+        left: TSizes.md,
+        right: TSizes.md,
+        top: TSizes.xs,
+        bottom: TSizes.xs,
       ),
     );
   }
@@ -215,7 +214,7 @@ class LiveDataTile extends StatelessWidget {
       width: 24,
       height: 24,
       colorFilter: const ColorFilter.mode(
-        LiveDataConstants.iconColor,
+        Color(0xFF727272),
         BlendMode.srcIn,
       ),
     );

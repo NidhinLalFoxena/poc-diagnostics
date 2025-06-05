@@ -48,7 +48,7 @@ class FirmwareConstants {
   static const buttonTextStyle = TextStyle(
     color: buttonTextColor,
     fontFamily: 'Brutal_Type',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: FontWeight.w500,
     height: 18 / 14,
     letterSpacing: 0.07,
@@ -123,7 +123,7 @@ PreferredSizeWidget _buildAppBar(BuildContext context) {
         icon: SvgPicture.asset(
           'assets/overview.svg',
           colorFilter: ColorFilter.mode(
-            FirmwareConstants.iconColor,
+            Color(0xFF92A8B0),
             BlendMode.srcIn,
           ),
         ),

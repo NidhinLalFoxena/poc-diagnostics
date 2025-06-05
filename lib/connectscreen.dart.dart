@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:lottie/lottie.dart';
 import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
 
+// 1:08
 // Constants for styles and colors
 class AppColors {
   static const primaryBackground = Color(0xFF161616);
@@ -41,7 +42,7 @@ class AppTextStyles {
   static const buttonText = TextStyle(
     color: AppColors.black,
     fontFamily: 'Brutal_Type',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: FontWeight.w500,
     height: 18 / 14,
     letterSpacing: 0.07,
@@ -192,14 +193,19 @@ class _ConnectScreenState extends State<ConnectScreen>
         );
       default:
         return Text(
-          "CONNECT",
+          "Connect",
           style: AppTextStyles.buttonText,
         );
     }
   }
 
   void _showConnectBottomSheet(BuildContext context) {
-    showMaterialModalBottomSheet(
+    showBarModalBottomSheet(
+      topControl: Container(
+        height: 4,
+        width: 50,
+        color: Color(0xFF363636),
+      ),
       context: context,
       backgroundColor: AppColors.primaryBackground,
       shape: const RoundedRectangleBorder(
@@ -220,7 +226,7 @@ class _ConnectScreenState extends State<ConnectScreen>
 
         // Simulate connection process
         Future.delayed(
-          const Duration(seconds: 2),
+          const Duration(seconds: 4),
           () {
             setState(() => _connectionState = ConnectionState.connected);
             _lottieController.stop();
@@ -261,9 +267,9 @@ class _ConnectScreenState extends State<ConnectScreen>
   Widget _buildBottomSheetHeader() {
     return CommonPaddingWrapper.only(
       top: TSizes.lg,
-      bottom: 0,
-      left: TSizes.lg,
-      right: TSizes.lg,
+      bottom: TSizes.md,
+      left: TSizes.md,
+      right: TSizes.md,
       child: Row(
         spacing: TSizes.md,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -284,7 +290,7 @@ class _ConnectScreenState extends State<ConnectScreen>
               ],
             ),
           ),
-          const Icon(Icons.loop, color: AppColors.accentIcon),
+          SvgPicture.asset('assets/autorenew.svg')
         ],
       ),
     );
@@ -296,7 +302,7 @@ class _ConnectScreenState extends State<ConnectScreen>
         separatorBuilder: (context, index) => const Divider(
           height: 1,
           thickness: 1,
-          color: AppColors.dividerColor,
+          color: Color(0xFF1F1F1F),
         ),
         padding: EdgeInsets.zero,
         itemCount: 10,
@@ -334,24 +340,26 @@ class ObdListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: CommonPaddingWrapper.getPadding(
-        left: TSizes.lg,
-        right: TSizes.lg,
+        left: TSizes.md,
+        right: TSizes.md,
         top: TSizes.m1,
         bottom: TSizes.m1,
       ),
       onTap: onTap,
       leading: SvgPicture.asset('assets/two_wheeler.svg'),
-      title: Text(deviceName,
-          style: AppTextStyles.brutalType.copyWith(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-            fontStyle: FontStyle.normal,
-          )),
+      title: Text(
+        deviceName,
+        style: AppTextStyles.brutalType.copyWith(
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          fontStyle: FontStyle.normal,
+        ),
+      ),
       trailing: Text(
         'Tap to connect',
         style: AppTextStyles.brutalType.copyWith(
           fontSize: 14,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.normal,
           fontStyle: FontStyle.normal,
           color: Color(0xFF828282),
         ),
