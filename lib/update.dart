@@ -128,8 +128,8 @@ class _UpdateModalSheetState extends State<UpdateModalSheet> {
           padding: CommonPaddingWrapper.getPadding(
             left: TSizes.l1,
             right: TSizes.l1,
-            top: TSizes.m,
-            bottom: TSizes.m,
+            top: TSizes.sm,
+            bottom: TSizes.sm,
           ),
           width: double.infinity,
           decoration: BoxDecoration(
