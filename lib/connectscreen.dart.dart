@@ -60,6 +60,8 @@ class _ConnectScreenState extends State<ConnectScreen>
     with TickerProviderStateMixin {
   late AnimationController _lottieController;
   ConnectionState _connectionState = ConnectionState.idle;
+  Duration? _lottieTotalDuration;
+  final Duration _stopPoint = const Duration(milliseconds: 710);
 
   @override
   void initState() {
@@ -118,9 +120,9 @@ class _ConnectScreenState extends State<ConnectScreen>
               'assets/bikelottie.json',
               controller: _lottieController,
               onLoaded: (composition) {
-                _lottieController
-                  ..duration = composition.duration
-                  ..stop();
+                _lottieTotalDuration = composition.duration;
+                _lottieController.duration = _lottieTotalDuration;
+                _lottieController.stop();
               },
             ),
           ),
@@ -212,43 +214,43 @@ class _ConnectScreenState extends State<ConnectScreen>
         borderRadius: BorderRadius.zero,
       ),
       builder: (context) => _buildBottomSheetContent(context),
-    ).then(
-      (_) {
-        // When bottom sheet is closed
-        if (_connectionState == ConnectionState.idle) {
-          // User didn't select any device
-          return;
+    ).then((_) {
+      if (_connectionState == ConnectionState.idle) return;
+
+      setState(() => _connectionState = ConnectionState.connecting);
+      _lottieController.repeat();
+
+      Future.delayed(const Duration(seconds: 4), () {
+        setState(() => _connectionState = ConnectionState.connected);
+
+        if (_lottieTotalDuration != null) {
+          final progress =
+              _stopPoint.inMilliseconds / _lottieTotalDuration!.inMilliseconds;
+
+          _lottieController
+            ..stop()
+            ..animateTo(progress)
+            ..addStatusListener((status) {
+              if (status == AnimationStatus.completed ||
+                  (_lottieController.value >= progress &&
+                      status == AnimationStatus.forward)) {
+                _lottieController.stop();
+
+                Future.delayed(const Duration(seconds: 1), () {
+                  if (context.mounted) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ProfileScreen(),
+                      ),
+                    );
+                  }
+                });
+              }
+            });
         }
-
-        // Start connection process
-        setState(() => _connectionState = ConnectionState.connecting);
-        _lottieController.repeat();
-
-        // Simulate connection process
-        Future.delayed(
-          const Duration(seconds: 4),
-          () {
-            setState(() => _connectionState = ConnectionState.connected);
-            _lottieController.stop();
-
-            // Navigate to profile after success
-            Future.delayed(
-              const Duration(seconds: 1),
-              () {
-                if (context.mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ProfileScreen(),
-                    ),
-                  );
-                }
-              },
-            );
-          },
-        );
-      },
-    );
+      });
+    });
   }
 
   Widget _buildBottomSheetContent(BuildContext context) {
