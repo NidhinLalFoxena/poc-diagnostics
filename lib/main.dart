@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'dart:typed_data';
 import 'package:bluetooth_classic/bluetooth_classic.dart';
@@ -26,21 +27,23 @@ class _MainAppState extends State<MainApp> {
   bool isConnecting = false;
   bool isConnected = false;
   String terminalData = '';
-  Timer? _speedRefreshTimer;
+  String terminalList = '';
+
+  String _responseBuffer = '';
+  Timer? _responseTimer;
+  final _responseTimeout =
+      const Duration(milliseconds: 300); // Adjust as needed
+  bool _awaitingResponse = false;
 
   Map<String, String> vehicleInfo = {
     'VIN': 'Unknown',
-    'Speed': 'Unknown km/h',
   };
 
   StreamSubscription<Uint8List>? _dataSubscription;
   StreamSubscription<int>? _statusSubscription;
   StreamSubscription<Device>? _scanSubscription;
   String vinBuffer = '';
-  String speedBuffer = '';
-  Timer? _vinResponseTimer;
-  Timer? _speedResponseTimer;
-  final _responseTimeout = const Duration(seconds: 2);
+
   final TextEditingController _commandController = TextEditingController();
   final String obdUuid = "00001101-0000-1000-8000-00805f9b34fb";
 
@@ -56,43 +59,28 @@ class _MainAppState extends State<MainApp> {
 
     _dataSubscription =
         _bluetoothClassicPlugin.onDeviceDataReceived().listen((data) {
-      log('====> data ${data}');
       final newData = String.fromCharCodes(data);
+      log('===> Raw Data: ${data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ')}');
+      log('===> New Data: $newData');
+
       setState(() {
-        terminalData += data.toString();
+        terminalData += newData;
+        terminalList += data.toString();
       });
 
-      // Handle VIN response
-      if (newData.contains('49 02')) {
-        vinBuffer = newData;
-        _startVinResponseTimer();
-        return;
-      }
+      // Add to buffer and reset timer
+      _responseBuffer += newData;
+      _responseTimer?.cancel();
 
-      // Handle speed response
-      if (newData.contains('41 0D')) {
-        speedBuffer = newData;
-        _startSpeedResponseTimer();
-        return;
-      }
-
-      // Continue collecting data for active buffers
-      if (vinBuffer.isNotEmpty) {
-        vinBuffer += newData;
-        if (newData.contains('>') || vinBuffer.length > 100) {
-          _processVinBuffer();
-        } else {
-          _startVinResponseTimer();
-        }
-      }
-
-      if (speedBuffer.isNotEmpty) {
-        speedBuffer += newData;
-        if (newData.contains('>') || speedBuffer.length > 30) {
-          _processSpeedBuffer();
-        } else {
-          _startSpeedResponseTimer();
-        }
+      // Check for termination conditions
+      if (_responseBuffer.contains('>') ||
+          _responseBuffer.contains('NO DATA') ||
+          _responseBuffer.contains('ERROR') ||
+          _responseBuffer.contains('?')) {
+        log('===> Response Buffer: $_responseBuffer');
+        _processResponse();
+      } else {
+        _responseTimer = Timer(_responseTimeout, _processResponse);
       }
     });
 
@@ -101,50 +89,41 @@ class _MainAppState extends State<MainApp> {
         .listen(_handleStatusChange);
   }
 
-  void _startVinResponseTimer() {
-    _vinResponseTimer?.cancel();
-    _vinResponseTimer = Timer(_responseTimeout, _processVinBuffer);
-  }
+  void _processResponse() {
+    _responseTimer?.cancel();
+    if (_responseBuffer.isEmpty) return;
 
-  void _startSpeedResponseTimer() {
-    _speedResponseTimer?.cancel();
-    _speedResponseTimer = Timer(_responseTimeout, _processSpeedBuffer);
-  }
+    log('Processing complete response: $_responseBuffer');
 
-  void _processVinBuffer() {
-    _vinResponseTimer?.cancel();
-    if (vinBuffer.isEmpty) return;
+    // Handle VIN response specifically
+    if (_awaitingResponse && _responseBuffer.contains('49 02')) {
+      log('===> Response Buffer: $_responseBuffer. $_awaitingResponse');
 
-    final vin = _parseVIN(vinBuffer);
-    if (vin != null) {
-      setState(() => vehicleInfo['VIN'] = vin);
+      final vin = _parseVIN(_responseBuffer);
+      log('===> Response Buffer: $vin');
+
+      if (vin != null) {
+        setState(() => vehicleInfo['VIN'] = vin);
+      }
     }
-    vinBuffer = '';
-  }
 
-  void _processSpeedBuffer() {
-    _speedResponseTimer?.cancel();
-    if (speedBuffer.isEmpty) return;
-
-    final speed = _parseSpeed(speedBuffer);
-    if (speed != null) {
-      setState(() => vehicleInfo['Speed'] = '$speed km/h');
-    }
-    speedBuffer = '';
+    // Clear the buffer for next command
+    _responseBuffer = '';
+    _awaitingResponse = false;
   }
 
   Future<void> _getVehicleInfo() async {
     setState(() {
       vehicleInfo['VIN'] = 'Detecting...';
-      vehicleInfo['Speed'] = 'Detecting...';
     });
 
-    await sendCommand('0902'); // VIN
-    await sendCommand('010D'); // Speed
+    // Clear any previous response data
+    _responseBuffer = '';
+
+    await sendCommand('0902');
   }
 
   String? _parseVIN(String rawData) {
-    log('====> rawData ${rawData}');
     try {
       final lines = rawData.split('\r');
       final vinLines = lines.where((line) => line.contains(':')).toList();
@@ -162,31 +141,11 @@ class _MainAppState extends State<MainApp> {
       final vinBytes =
           hexBytes.skip(startIndex).takeWhile((byte) => byte != '00').toList();
 
-      log('====> vinBytes ${vinBytes.map((hex) => String.fromCharCode(int.parse(hex, radix: 16))).join().trim()}');
-
       return vinBytes
           .map((hex) => String.fromCharCode(int.parse(hex, radix: 16)))
-          .join()
-          .trim();
+          .join();
     } catch (e) {
       debugPrint('Error parsing VIN: $e');
-      return null;
-    }
-  }
-
-  int? _parseSpeed(String rawData) {
-    try {
-      final lines = rawData.split('\r');
-      final speedLines = lines.where((line) => line.contains('41 0D')).toList();
-      if (speedLines.isEmpty) return null;
-
-      final hexParts = speedLines.first.split(' ');
-      final speedHex = hexParts.length >= 3 ? hexParts[2] : null;
-      if (speedHex == null) return null;
-
-      return int.tryParse(speedHex, radix: 16);
-    } catch (e) {
-      debugPrint('Error parsing speed: $e');
       return null;
     }
   }
@@ -225,13 +184,6 @@ class _MainAppState extends State<MainApp> {
       setState(() => connectedDevice = device);
       await Future.delayed(const Duration(milliseconds: 300));
       await _getVehicleInfo();
-
-      // Start periodic speed updates
-      _speedRefreshTimer = Timer.periodic(const Duration(seconds: 2), (_) {
-        if (isConnected) {
-          sendCommand('010D');
-        }
-      });
     } on TimeoutException {
       _showSnackBar('Connection timed out');
     } finally {
@@ -251,8 +203,15 @@ class _MainAppState extends State<MainApp> {
 
   Future<void> sendCommand(String command) async {
     if (command.isEmpty) return;
+
+    // Clear previous buffer and set awaiting flag
+    _responseBuffer = '';
+    _awaitingResponse = true;
+
     await _bluetoothClassicPlugin.write('$command\r');
     _commandController.clear();
+
+    log('Sent command: $command');
   }
 
   void _handleStatusChange(int statusCode) {
@@ -280,10 +239,7 @@ class _MainAppState extends State<MainApp> {
   void dispose() {
     _dataSubscription?.cancel();
     _statusSubscription?.cancel();
-    _speedRefreshTimer?.cancel();
     _scanSubscription?.cancel();
-    _vinResponseTimer?.cancel();
-    _speedResponseTimer?.cancel();
     _bluetoothClassicPlugin.disconnect();
     _commandController.dispose();
     super.dispose();
@@ -291,7 +247,7 @@ class _MainAppState extends State<MainApp> {
 
   @override
   Widget build(BuildContext context) {
-    log('===> Terminal ${vehicleInfo['VIN']}');
+    log('===> Terminal ${terminalList}');
     return MaterialApp(
       scaffoldMessengerKey: _scaffoldMessengerKey,
       home: Scaffold(
@@ -345,7 +301,6 @@ class _MainAppState extends State<MainApp> {
                             )),
                         const SizedBox(height: 8),
                         _buildInfoRow('VIN', vehicleInfo['VIN']!),
-                        _buildInfoRow('Speed', vehicleInfo['Speed']!),
                       ],
                     ),
                   ),
@@ -382,7 +337,7 @@ class _MainAppState extends State<MainApp> {
                     ),
                     child: SingleChildScrollView(
                       reverse: true,
-                      child: Text(terminalData,
+                      child: Text(terminalList,
                           style: const TextStyle(fontFamily: 'Monospace')),
                     ),
                   ),
@@ -435,7 +390,7 @@ class _MainAppState extends State<MainApp> {
                 style: const TextStyle(fontWeight: FontWeight.bold)),
           ),
           Expanded(
-            child: Text(value.trim(),
+            child: Text(value,
                 style: TextStyle(
                     color: value == 'Unknown' || value == 'Detecting...'
                         ? Colors.grey
